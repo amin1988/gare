@@ -1,0 +1,204 @@
+<?php
+if (!defined("_BASEDIR_")) exit();
+include_model("GruppoCat","Zona");
+include_controller("org/gestione_gara");
+
+class NuovaGara extends GestioneGara {
+	/**
+	 * @var GruppoCat[][] formato [1 individuale, 0 squadre] => GruppoCat[]
+	 */
+	private $gruppicat;
+	
+	public function __construct() {
+		parent::__construct(true);
+		$this->gruppicat[1] = array();
+		$this->gruppicat[0] = array();
+		foreach (GruppoCat::lista() as $id => $gc) {
+			/* @var $gc GruppoCat */
+			if ($gc->isIndividuale())
+				$this->gruppicat[1][$id] = $gc;
+			else 
+				$this->gruppicat[0][$id] = $gc;
+		}
+	}
+	
+	/**
+	 * @param boolean $indiv true per i gruppi individuali, false per le squadre
+	 * @return GruppoCat[] 
+	 */
+	public function getGruppiCat($indiv) {
+		if ($indiv)
+			return $this->gruppicat[1];
+		else
+			return $this->gruppicat[0];
+	}
+	
+	public function getZone() {
+		return Zona::listaZone($this->ut->getZone());
+	}
+	
+	public function getNome() {
+		return $this->getValue("nome");
+	}
+	
+	public function isPubblica() {
+		if (isset($_POST["pubblica"]))
+			return $_POST["pubblica"] == "1";
+		else
+			return false;
+	}
+	
+	public function isGruppoSelezionato($idgruppo) {
+		return isset($_POST["gruppo"][$idgruppo]);
+	}
+	
+	public function isZonaSelezionata($idzona) {
+		return isset($_POST["zona"][$idzona]);
+	}
+	
+	public function usaPeso() {
+		if (isset($_POST["peso"]))
+			return $_POST["peso"] == "1";
+		else
+			return true;
+	}
+	
+	public function getDataGara() {
+		return $this->getValue("data");
+	}
+	
+	public function haDataFineGara() {
+		return isset($_POST["chkfine"]);
+	}
+	
+	public function getDataFineGara() {
+		return $this->getValue("datafine");
+	}
+	
+	public function getChiusura() {
+		return $this->getValue("chiusura");
+	}
+	
+	public function getMinCoach() {
+		return $this->getValue("mincoach",0);
+	}
+
+	public function getMaxCoach() {
+		return $this->getValue("maxcoach", 3);
+	}
+
+	public function getFotoCoach() {
+		return $this->getValue("fotocoach", false);
+	}
+
+	public function getPagamentoCoach() {
+		return $this->getValue("coachpaga", false);
+	}
+	
+	public function getPrezzoIndiv() {
+		return $this->getValue("prezzo_indiv", 15);
+	}
+	
+	public function getPrezzoSquadre() {
+		return $this->getValue("prezzo_sq", 45);
+	}
+	
+	public function getPrezzoCoach() {
+		return $this->getValue("prezzo_coach", 5);
+	}
+	
+	public function getRimborsoArb() {
+		return $this->getValue("rimborso_arbitro", 20);
+	}
+	
+	public function getDescrizione() {
+		return htmlspecialchars($this->getValue("descrizione"));
+	}
+	
+	protected function salvaGara() {
+		$gruppi = GruppoCat::lista($_POST["gruppo"]);
+		$cat[0] = array();
+		$cat[1] = array();
+		foreach ($gruppi as $g) {
+			/* @var GruppoCat */
+			$catg = $g->getCategorie();
+			if ($g->isIndividuale())
+				$i = 1;
+			else 
+				$i = 0;
+			if (count($cat[$i]) == 0) {
+				$cat[$i] = $catg;
+			} else {
+				$newc = array();
+				foreach ($catg as $k=>$cg) {
+					$ins = true;
+					foreach ($cat[$i] as $c) {
+						//controllo uguaglianza
+						if ($c->uguale($cg)) {
+							$ins = false;
+							break;
+						}
+						//TODO controllo inclusione?
+					}
+					if ($ins) $newc[$k] = $cg;
+				}
+				$cat[$i] += $newc;
+			}
+		}
+		
+		$n = $this->ordinaCat($cat[1], 1);
+		$this->ordinaCat($cat[0], $n);
+
+		$gara = new Gara();
+		$gara->setNome($_POST["nome"]);
+		$gara->setDataGara($this->leggiData($_POST["data"]));
+		if (isset($_POST["chkfine"])) 
+			$gara->setDataFineGara($this->leggiData($_POST["datafine"]));
+		else
+			$gara->setDataFineGara(NULL);
+		$gara->setChiusura($this->leggiData($_POST["chiusura"]));
+		$gara->setMinCoach(intval($_POST["mincoach"]));
+		$gara->setMaxCoach(intval($_POST["maxcoach"]));
+		$gara->setFotoCoachObbligatoria(isset($_POST["fotocoach"]));
+		$gara->setPagamentoCoach(isset($_POST["coachpaga"]));
+		$gara->setPrezzoIndividuale($this->leggiFloat($_POST["prezzo_indiv"]));
+		$gara->setPrezzoSquadra($this->leggiFloat($_POST["prezzo_sq"]));
+		$gara->setPrezzoCoach($this->leggiFloat($_POST["prezzo_coach"]));
+		$gara->setRimborsoArb($this->leggiFloat($_POST["rimborso_arbitro"]));
+		$gara->setCategorieIndiv($cat[1]);
+		$gara->setCategorieSquadre($cat[0]);
+		$gara->setDescrizione($this->pulisciDescrizione());
+		
+		if(_WKC_MODE_)
+			$gara->setWkc(1);
+		else 
+			$gara->setWkc(0);
+		
+		$gara->setPubblica($_POST["pubblica"] == 1);
+		$gara->setUsaPeso($_POST["peso"] == 1);
+		$gara->setZone($_POST["zona"]);
+		//locandina
+		$this->salvaLocandina($gara, true);
+
+		//allegati
+		$this->salvaAllegati($gara->getChiave());
+		
+		redirect("dettagli.php?id=".$gara->getChiave());
+	}
+	
+	private function ordinaCat(&$cat, $start) {
+		if (count($cat) == 0) return $start;
+		uasort($cat, array("Categoria","compare"));
+		$num = $start;
+		foreach ($cat as $c) {
+			/* @var $c Categoria */
+			$c->setNumero($num);
+			$num++;
+		}
+		return $num;
+	}
+	
+	public function locandinaSelezionata() {
+		return isset($_POST["locandina"]);
+	}
+}

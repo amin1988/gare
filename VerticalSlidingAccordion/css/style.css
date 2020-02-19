@@ -1,0 +1,229 @@
+/* Vertical Accordion Style */
+.va-container{
+	position:relative;
+	margin:40px auto 0 auto;
+	text-align:left;
+}
+.va-wrapper{
+	width:97%;
+	height:100%;
+	position:relative;
+	overflow:hidden;
+	background:#0f1b5f;
+}
+.va-wrapper h1,h2,h3{
+margin:0;
+padding:0;
+}
+.va-slice{
+	cursor:pointer;
+	position:absolute;
+	width:100%;
+	left:0px;
+	overflow:hidden;
+
+}
+.bordo{
+height:1px;
+position:absolute;
+bottom:1px;
+left:0;
+width:100%;
+background:#fff;
+			z-index:10000;
+			/* IE10 */ 
+background-image: -ms-linear-gradient(left, transparent 35%, #0f1b5f 55%);
+
+/* Mozilla Firefox */ 
+background-image: -moz-linear-gradient(left, transparent 35%, #0f1b5f 55%);
+
+/* Opera */ 
+background-image: -o-linear-gradient(left, transparent 35%, #0f1b5f 55%);
+
+/* Webkit (Safari/Chrome 10) */ 
+background-image: -webkit-gradient(linear, left, left bottom, color-stop(0, #0f1b5f), color-stop(1, transparent));
+
+/* Webkit (Chrome 11+) */ 
+background-image: -webkit-linear-gradient(left, transparent 10%, #0f1b5f 70%);
+
+/* Proposed W3C Markup */ 
+background-image: linear-gradient(leftt, transparent 35%, #0f1b5f 55%);
+	
+	opacity:0.3;
+	filter:alpha(opacity=30);
+
+}
+.va-slice-1{
+/*
+	background:#000 url(../images/1.jpg) no-repeat center center;
+	*/
+
+}
+.va-slice-2{
+	background:#000 url(../images/2.jpg) no-repeat center center;
+}
+.va-slice-3{
+	background:#000 url(../images/3.jpg) no-repeat center center;
+}
+.va-slice-4{
+	background:#000 url(../images/4.jpg) no-repeat center center;
+}
+.va-slice-5{
+	background:#000 url(../images/5.jpg) no-repeat center center;
+}
+.va-slice-6{
+	background:#000 url(../images/6.jpg) no-repeat center center;
+}
+.va-slice-7{
+	background:#000 url(../images/7.jpg) no-repeat center center;
+}
+.va-slice-color-1{
+	background-color:#97c5eb;
+}
+.va-slice-color-2{
+	background-color:#68ace5;
+}
+.va-slice-color-3{
+	background-color:#0072cf;
+}
+.va-slice-color-4{
+	background-color:#0039a6;
+}
+.va-slice-color-5{
+	background-color:#00338e;
+}
+.va-slice-color-6{
+	background-color:#002c76;
+}
+.va-slice-color-7{
+	background-color:#002144;
+}
+.va-title{
+position:relative;
+	font-family: 'Philosopher', sans-serif;
+	text-transform: capitalize;
+	font-style:italic;
+	font-size:50px;
+	margin-left:0px;
+	padding-left:20px;
+	color:#fff;
+	text-shadow: 2px 2px 4px #000;
+	line-height:60px;
+	
+	/* IE10 */ 
+background-image: -ms-linear-gradient( right, transparent 35%, #0f1b5f 55%);
+
+/* Mozilla Firefox */ 
+background-image: -moz-linear-gradient( right, transparent 35%, #0f1b5f 55%);
+
+/* Opera */ 
+background-image: -o-linear-gradient( right, transparent 35%, #0f1b5f 55%);
+
+/* Webkit (Safari/Chrome 10) */ 
+background-image: -webkit-gradient(linear, right , left bottom, color-stop(0, #0f1b5f), color-stop(1, transparent));
+
+/* Webkit (Chrome 11+) */ 
+background-image: -webkit-linear-gradient(right, transparent 10%, #0f1b5f 70%);
+
+/* Proposed W3C Markup */ 
+background-image: linear-gradient(right, transparent 35%, #0f1b5f 55%);
+	
+
+}
+.va-content{
+	display:none;
+	margin-left:0px;
+}
+.va-slice p{
+	font-size: 22px;
+	font-style: italic;
+	font-family:Georgia, serif;
+}
+.va-slice ul{
+	margin-top:20px;
+}
+.va-slice ul li{
+	list-style-type: none;
+	float:left;
+	margin:0px 2px;
+}
+.va-slice ul li a{
+	color:#fff;
+	background:#0f1b5f;
+	padding:8px 10px;
+	margin-right:10px;
+	font-size:12px;
+	font-family:'PT Sans', sans-serif;
+	text-transform:uppercase;
+	
+	border: solid 1px #fff;
+	-webkit-border-radius: 10px;
+	-moz-border-radius: 10px;
+	border-radius: 10px;
+	/*
+	-webkit-box-shadow: 1px 1px 2px 2px #000;
+		-moz-box-shadow: 1px 1px 2px 2px #000;
+	box-shadow: 1px 1px 2px 2px #000;
+	*/
+	
+	
+}
+.va-slice ul li a:hover{
+	background:#000;
+	color:#fff;
+	text-shadow:none;
+	
+	
+background: #0f1b5f;
+color:#fff;
+
+/*
+background: -moz-linear-gradient(top,  rgba(244,244,244,1) 0%, rgba(242,242,242,1) 100%);
+background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgba(244,244,244,1)), color-stop(100%,rgba(242,242,242,1)));
+background: -webkit-linear-gradient(top,  rgba(244,244,244,1) 0%,rgba(242,242,242,1) 100%);
+background: -o-linear-gradient(top,  rgba(244,244,244,1) 0%,rgba(242,242,242,1) 100%);
+background: -ms-linear-gradient(top,  rgba(244,244,244,1) 0%,rgba(242,242,242,1) 100%);
+background: linear-gradient(top,  rgba(244,244,244,1) 0%,rgba(242,242,242,1) 100%);
+*/
+padding:10px 10px;
+
+/*box-shadow*/
+
+
+-webkit-box-shadow:0px 1px 5px #FFF inset,			
+                   0 0 5px 5px #E0E0E0;
+   -moz-box-shadow:0px 1px 5px #FFF inset,
+        			0 0 5px 5px #E0E0E0;
+        box-shadow:0px 1px 5px #FFF inset,
+        			0 0 5px 5px #E0E0E0;     
+
+-webkit-transition:all 0.2s linear;
+   -moz-transition:all 0.2s linear;
+     -o-transition:all 0.2s linear;
+        transition:all 0.2s linear;
+	
+	
+	
+}
+.va-nav span{
+	width:40px;
+	height:25px;
+	background:transparent url(../images/prev.png) no-repeat center center;
+	position:absolute;
+	top:-35px;
+	left:50%;
+	margin-left:-20px;
+	text-indent:-9000px;
+	opacity:0.7;
+	cursor:pointer;
+	display:none;
+	z-index:100;
+}
+.va-nav span.va-nav-next{
+	background-image:url(../images/next.png);
+	top:auto;
+	bottom:-35px;
+}
+.va-nav span:hover{
+	opacity:1.0;
+}

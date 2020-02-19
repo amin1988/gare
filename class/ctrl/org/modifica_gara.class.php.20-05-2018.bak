@@ -1,0 +1,196 @@
+<?php
+if (!defined("_BASEDIR_")) exit();
+include_model("Gara");
+include_controller("org/gestione_gara");
+
+class ModificaGara extends GestioneGara {
+	/**
+	 * @var Gara
+	 */
+	private $gara;
+	
+	public function __construct() {
+		parent::__construct(false);
+	}
+	
+	protected function controlli() {
+		if (!isset($_GET["id"])) {
+			homeutente($this->ut);
+			return false;
+		}
+		$this->gara = new Gara($_GET["id"]);
+		if (!$this->gara->esiste()) {
+			homeutente($this->ut);
+			return false;
+		}
+		
+		$_POST["data"] = $this->gara->getDataGara()->format("d/m/Y");
+		return true;
+	}
+	
+	public function getAllegati() {
+		return $this->gara->getAllegati();
+	}
+	
+	public function getZone() {
+		return Zona::listaZone(array_merge($this->ut->getZone(), $this->gara->getZone()));
+	}
+	
+	public function getNome() {
+		return $this->getValue("nome", $this->gara->getNome());
+	}
+	
+	public function isPubblica() {
+		if (isset($_POST["pubblica"]))
+			return $_POST["pubblica"] == "1";
+		else
+			return $this->gara->isPubblica();
+	}
+	
+	public function isZonaSelezionata($idzona) {
+		if (!isset($_POST["nome"])) return in_array($idzona, $this->gara->getZone());
+		return isset($_POST["zona"][$idzona]);
+	}
+	
+	public function usaPeso() {
+		if (isset($_POST["peso"]))
+			return $_POST["peso"] == "1";
+		else
+			return $this->gara->usaPeso();
+	}
+	
+	public function getDataGara() {
+		return $this->getValue("data", $this->gara->getDataGara()->format("d/m/Y"));
+	}
+	
+	public function haDataFineGara() {
+		if (isset($_POST["chkfine"])) return true;
+		else return !is_null($this->gara->getDataFineGara());
+	}
+	
+	public function getDataFineGara() {
+		$df = $this->gara->getDataFineGara();
+		if (is_null($df))
+			$df = "";
+		else 
+			$df = $df->format("d/m/Y");
+		return $this->getValue("datafine", $df);
+	}
+	
+	public function getChiusura() {
+		return $this->getValue("chiusura", $this->gara->getChiusura()->format("d/m/Y"));
+	}
+
+	public function getMinCoach() {
+		return $this->getValue("mincoach", $this->gara->getMinCoach());
+	}
+
+	public function getMaxCoach() {
+		return $this->getValue("maxcoach", $this->gara->getMaxCoach());
+	}
+
+	public function getFotoCoach() {
+		return $this->getValue("fotocoach", $this->gara->isFotoCoachObbligatoria());
+	}
+	
+	public function getPagamentoCoach() {
+		return $this->getValue("coachpaga", $this->gara->getPagamentoCoach());
+	}
+	
+	public function getPrezzoIndiv() {
+		return $this->getValue("prezzo_indiv", $this->gara->getPrezzoIndividuale());
+	}
+	
+	public function getPrezzoSquadre() {
+		return $this->getValue("prezzo_sq", $this->gara->getPrezzoSquadra());
+	}
+	
+	public function getPrezzoCoach() {
+		return $this->getValue("prezzo_coach", $this->gara->getPrezzoCoach());
+	}
+	
+	public function getRimborsoArb() {
+		return $this->getValue("rimborso_arbitro", $this->gara->getRimborsoArb());
+	}
+	
+	public function getDescrizione() {
+		return htmlspecialchars($this->getValue("descrizione", $this->gara->getDescrizione()));
+	}
+	
+	public function haLocandina() {
+		return $this->gara->haLocandina();
+	} 
+	
+	public function locandinaSelezionata() {
+		if (!isset($_POST["nome"])) return $this->gara->haLocandina();
+		return isset($_POST["chkloc"]);
+	}
+	
+	/**
+	 * @param Allegato $doc
+	 */
+	public function isDocCaricatoSelezionato($doc) {
+		if (!isset($_POST["nome"])) return true;
+		return isset($_POST["olddoc"][$doc->getChiave()]);
+	}
+	
+	/**
+	 * @param Allegato $doc
+	 */
+	public function getNomeDocCaricato($doc) {
+		return $this->getArrayValue("nomeolddoc", $doc->getChiave(), $doc->getNome());
+	}
+	
+	protected function salvaGara() {
+		$g = $this->gara;
+		$g->setNome($_POST["nome"]);
+		$g->setPubblica($_POST["pubblica"]==1);
+		if (isset($_POST["chkfine"])) 
+			$g->setDataFineGara($this->leggiData($_POST["datafine"]));
+		else
+			$g->setDataFineGara(NULL);
+		$g->setChiusura($this->leggiData($_POST["chiusura"]));
+		$g->setMinCoach(intval($_POST["mincoach"]));
+		$g->setMaxCoach(intval($_POST["maxcoach"]));
+		$g->setPagamentoCoach(isset($_POST["coachpaga"]));
+		$g->setPrezzoIndividuale($this->leggiFloat($_POST["prezzo_indiv"]));
+		$g->setPrezzoSquadra($this->leggiFloat($_POST["prezzo_sq"]));
+		$g->setPrezzoCoach($this->leggiFloat($_POST["prezzo_coach"]));
+		$g->setRimborsoArb($this->leggiFloat($_POST["rimborso_arbitro"]));
+		$g->setDescrizione($this->pulisciDescrizione());
+		//locandina
+		if ($g->haLocandina() && isset($_POST["azioneloc"]) && $_POST["azioneloc"] != "tieni") {
+			unlink(_BASEDIR_.$g->getLocandina());
+		}
+		if (isset($_POST["azioneloc"]) && $_POST["azioneloc"] == "elimina") {
+			$g->setLocandina(NULL);
+		} else {
+			$this->salvaLocandina($g, false);
+		}
+		$g->setZone($_POST["zona"]);
+		
+		//allegati vecchi
+		foreach ($g->getAllegati() as $doc) {
+			/* @var $doc Allegato */
+			$id = $doc->getChiave();
+			if (isset($_POST["olddoc"][$id])) {
+				if ($_POST["nomeolddoc"][$id] != $doc->getNome()) {
+					//rinomina
+					$doc->setNome($_POST["nomeolddoc"][$id]);
+					$doc->salva();
+				}
+			} else {
+				//elimina
+				$path = _BASEDIR_.$doc->getUrl();
+				$doc->elimina();
+				unlink($path);
+			}
+		}
+		
+		//allegati nuovi
+		$this->salvaAllegati($g->getChiave());
+		
+		$g->salva();
+		redirect("dettagli.php?id=".$g->getChiave());
+	}
+}

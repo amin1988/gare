@@ -1,0 +1,69 @@
+<!doctype html>
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+	<title>Filament Group Lab Example Page from: Accessible, Custom Designed Checkbox and Radio Button Inputs Styled with CSS (and a dash of jQuery)</title>
+	<link rel="shortcut icon" href="/images/favicon2.ico" type="image/x-icon" />
+	
+	<!-- Example CSS and scripts: -->	
+	<link rel="stylesheet" type="text/css" href="demo.css" />
+	
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
+
+	<script type="text/javascript" src="customInput.jquery.js"></script>
+		
+	<script type="text/javascript">
+	// Run the script on DOM ready:
+	$(function(){
+		$('input').customInput();
+	});
+	</script>	
+</head>
+
+<body>
+<!-- /demoHeader -->
+<form>	
+	<fieldset>
+		<legend>Which genres do you like?</legend>
+		<input type="checkbox" name="genre" id="check-1" value="action" />
+		<label for="check-1">Action / Adventure</label>
+		
+		<input type="checkbox" name="genre" id="check-2" value="comedy" />
+
+		<label for="check-2">Comedy</label>
+		
+		<input type="checkbox" name="genre" id="check-3" value="epic" />
+		<label for="check-3">Epic / Historical</label>
+		
+		<input type="checkbox" name="genre" id="check-4" value="science" />
+		<label for="check-4">Science Fiction</label>
+		
+		<input type="checkbox" name="genre" id="check-5" value="romance" />
+		<label for="check-5">Romance</label>
+
+		
+		<input type="checkbox" name="genre" id="check-6" value="western" />
+		<label for="check-6">Western</label>
+	</fieldset>
+		
+	<fieldset>
+		<legend>Caddyshack is the greatest movie of all time, right?</legend>
+		<input type="radio" name="opinions" id="radio-1" value="1" />
+		<label for="radio-1">Totally</label>
+
+		
+		<input type="radio" name="opinions" id="radio-2" value="1" />
+		<label for="radio-2">You must be kidding</label>
+		
+		<input type="radio" name="opinions" id="radio-3" value="1" />
+		<label for="radio-3">What's Caddyshack?</label>
+	</fieldset>
+</form>
+More script and css style
+: <a href="http://www.htmldrive.net/" title="HTML DRIVE - Free DHMTL Scripts,Jquery plugins,Javascript,CSS,CSS3,Html5 Library">www.htmldrive.net </a>
+
+	
+	
+</body>
+</html>

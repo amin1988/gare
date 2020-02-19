@@ -1,0 +1,763 @@
+<?php
+if (!defined("_BASEDIR_")) exit();
+include_model("Modello","Categoria","Persona","Coach","Arbitro");
+
+define("_LOCANDINA_SUBDIR_", "locandine/");
+define("_LOCANDINA_DEFAULT_", _LOCANDINA_SUBDIR_."default.jpg");
+
+/**
+ * @access public
+ * @package models
+ */
+class Gara extends Modello { //TODO eliminare tutti i file allegati e la locandina
+	/**
+	 * @var Allegato[]
+	 */
+	private $allegati = NULL;
+	/**
+	 * @var Categoria[][] formato: individuale(0|1) => idcategoria => Categoria
+	 */
+	private $categ = NULL;
+	
+	/**
+	 * Indica se sono stati modificati i coach di una societa
+	 * @var boolean[] formato: idsocieta => boolean
+	 */
+	private $coachmod;
+	/**
+	 * true se sono stati caricati tutti i coach
+	 * @var boolean
+	 */
+	private $allcoach = false;
+	
+	/**
+	 * Restituisce le gare non chiuse in una certa zona
+	 * @access public
+	 * @param int[] $zone
+	 * @return Gara[]
+	 * @static
+	 */
+	public static function getGareAttive($zone = null) {
+		/* @var $conn Connessione */
+		$conn = $GLOBALS["connint"];
+		$conn->connetti();
+		if (is_null($zone))
+			return self::listaGare($conn->select("gareattive"));
+		else {
+			return self::listaGare($conn->select(
+					"gareattive g INNER JOIN zonegara on g.idgara = zonegara.idgara",
+					"idzona IN " . $conn->flatArray($zone),"DISTINCT g.*"));
+		}
+	}
+	
+	/**
+	 * Restituisce le gare in una certa zona chiuse ma non ancora svolte
+	 * @param Zona[] $zone
+	 * @return Gara[]
+	 */
+	public static function getGareChiuse($zone = null) {
+		/* @var $conn Connessione */
+		$conn = $GLOBALS["connint"];
+		$conn->connetti();
+		$where = "chiusura < CURDATE()";
+		if (is_null($zone))
+			return self::listaGare($conn->select("garefuture",$where));
+		else {
+			$where .= " AND idzona IN " . $conn->flatArray($zone);
+			return self::listaGare($conn->select(
+					"garefuture g INNER JOIN zonegara on g.idgara = zonegara.idgara",
+					"$where ORDER BY data ASC","g.*"));
+		}
+	}
+	
+	/**
+	 * Restituisce lo storico delle gare
+	 * @return Gara[]
+	 */
+	public static function getGarePassate() {
+		/* @var $conn Connessione */
+		$conn = $GLOBALS["connint"];
+		$conn->connetti();
+		return self::listaGare($conn->select("gare",
+				"(datafine IS NULL OR datafine < CURDATE()) AND data < CURDATE() ORDER BY data DESC"));
+	}
+	
+	/**
+	 * Restituisce le gare pubbliche non chiuse
+	 * @param int $zone
+	 * @return Gara[]
+	 */
+	public static function getGarePubbliche() {
+		/* @var $conn Connessione */
+		$conn = $GLOBALS["connint"];
+		$conn->connetti();
+		return self::listaGare($conn->select("gareattive", "pubblica = 1"));
+	}
+	
+	/**
+	 * Restituisce le gare pubbliche non ancora finite
+	 * @param int $zone
+	 * @return Gara[]
+	 */
+	public static function getGarePubblicheNonTerminate() {
+		/* @var $conn Connessione */
+		$conn = $GLOBALS["connint"];
+		$conn->connetti();
+		return self::listaGare($conn->select("gareprog", "pubblica = 1"));
+	}
+	
+	/**
+	 * @param int[] $idgare
+	 * @return Gara[]
+	 */
+	public static function insieme($idgare) {
+		/* @var $conn Connessione */
+		$conn = $GLOBALS["connint"];
+		$conn->connetti();
+		$ins = $conn->flatArray($idgare);
+		return self::listaGare($conn->select("garefuture", "idgara IN $ins"));
+	}
+	
+	/**
+	 * @param mysqli_result $mr
+	 * @return Gara[] 
+	 */
+	private static function listaGare($mr) {
+		$gare = array();
+		while ($row = $mr->fetch_assoc()) {
+			$g = new Gara();
+			$g->carica($row);
+			$gare[$g->getChiave()] = $g;
+		}
+		return $gare;
+	}
+	
+	public static function fromId($id) {
+		/* @var $conn Connessione */
+		$conn = $GLOBALS["connint"];
+		$conn->connetti();
+		$mr = $conn->select("gare","idgara='$id'");
+		$row = $mr->fetch_assoc();
+		
+		if($row !== NULL)
+		{
+			$g = new Gara();
+			$g->carica($row);
+			return $g;
+		}
+		else
+			return NULL;
+	}
+		
+	public function __construct($id = NULL) {
+		parent::__construct("gare","idgara",$id);
+		$this->aggiungiLista("zone", "zonegara", "idzona");
+		$GLOBALS["ultima_gara"] = $this;
+	}
+
+	/**
+	 * @access public
+	 * @return string
+	 */
+	public function getNome() {
+		return $this->get("nome");
+	}
+
+	/**
+	 * @access public
+	 * @param string $nome
+	 * @return void
+	 */
+	public function setNome($nome) {
+		$this->set("nome", $nome);
+	}
+	
+	public function getDescrizione() {
+		return $this->get("descrizione");
+	}
+	
+	public function setDescrizione($desc) {
+		$this->set("descrizione", $desc);
+	}
+	
+	public function getWkc() {
+		return $this->get("wkc");
+	}
+	
+	public function setWkc($wkc) {
+		$this->set("wkc", $wkc);
+	}
+	
+	/**
+	 * @return boolean
+	 */
+	public function isIndividuale() {
+		//1 = solo squadre
+		return ($this->get("indsq") != 1);
+	}
+	
+	/**
+	 * @return boolean
+	 */
+	public function isSquadre() {
+		//0 = solo individuale
+		return ($this->get("indsq") != 0);
+	}
+	
+	/**
+	 * @access public
+	 * @return Categoria[]
+	 */
+	public function getCategorieIndiv() {
+		if (is_null($this->categ)) 
+			$this->caricaCategorie();
+		return $this->categ[1];
+	}
+
+	/**
+	 * @param Categoria[] $categorie
+	 */
+	public function setCategorieIndiv($categorie) {
+		$idc = array();
+		if ($this->categ === NULL)
+			$this->categ[0] = array();
+		$this->categ[1] = array();
+		foreach ($categorie as $c) {
+			$this->categ[1][$c->getChiave()] = $c;
+			$idc[] = $c->getChiave();
+		}
+		//TODO va bene?
+		$this->setLista("catind", $idc);
+		$this->setIndSq();
+	}
+	
+	public function haCategorieIpponPeso() {
+		$cat = $this->getCategorieIndiv();
+		return isset($cat[942]);
+	}
+	
+	/**
+	 * @access public
+	 * @return Categoria[] formato idcategoria => Categoria
+	 */
+	public function getCategorieSquadre() {
+		if (is_null($this->categ))
+			$this->caricaCategorie();
+		return $this->categ[0];
+	}
+	
+	/**
+	 * @param Categoria[] $categorie
+	 */
+	public function setCategorieSquadre($categorie) {
+		$idc = array();
+		if ($this->categ === NULL)
+			$this->categ[1] = array();
+		$this->categ[0] = array();
+		foreach ($categorie as $c) {
+			$this->categ[0][$c->getChiave()] = $c;
+			$idc[] = $c->getChiave();
+		}
+		//TODO va bene?
+		$this->setLista("catsq", $idc);
+		$this->setIndSq();
+	}
+	
+	private function setIndSq() {
+		if (count($this->categ[0]) > 0) {
+			//ha squadre
+			if (count($this->categ[1]) > 0) {
+				//ha entrambi
+				$is = 2;
+			} else {
+				//solo squadre
+				$is = 1;
+			}
+		} else {
+			//solo individuali
+			$is = 0;
+		}
+		$this->set("indsq", $is);
+	}
+	
+	/**
+	 * @access public
+	 * @return Data
+	 */
+	public function getDataGara() {
+		return $this->getData("data");
+	}
+	
+	/**
+	 * @access public
+	 * @param Data $data
+	 */
+	public function setDataGara($data) {
+		$this->setData("data", $data);
+	}
+	
+	/**
+	 * @return Data o NULL se la gara si svolge in un unico giorno
+	 */
+	public function getDataFineGara() {
+		return $this->getData("datafine");
+	}
+	
+	/**
+	 * @access public
+	 * @param Data $data
+	 */
+	public function setDataFineGara($data) {
+		$this->setData("datafine", $data);
+	}
+	
+	/**
+	 * Indica se l'atleta pu� partecipare alla gara individualmente
+	 * @access public
+	 * @param Atleta $atleta
+	 * @param boolean $cintura true per considerare anche la cintura
+	 * @return int[] i tipi di gara a cui pu� partecipare
+	 */
+	public function puoPartecipareIndiv($atleta, $cintura=true) {
+		return $this->puoPartecipare($atleta, $this->getCategorieIndiv(), $cintura);
+	}
+
+	/**
+	 * Indica se l'atleta pu� partecipare alla gara in squadra
+	 * @access public
+	 * @param Atleta $atleta
+	 * @param boolean $cintura true per considerare anche la cintura
+	 * @return int[] i tipi di gara a cui pu� partecipare
+	 */
+	public function puoPartecipareSquadre($atleta, $cintura=true) {
+		return $this->puoPartecipare($atleta, $this->getCategorieSquadre(), $cintura);
+	}
+	
+	/**
+	 * Indica se l'atleta appartiene ad una delle categorie
+	 * @access public
+	 * @param Atleta $atleta
+	 * @param Categoria[] $cat
+	 * @param boolean $cintura true per considerare anche la cintura
+	 * @return int[] i tipi di gara a cui pu� partecipare
+	 */
+	private function puoPartecipare($atleta, $cat, $cintura=true) {
+		$data = $this->getDataGara();
+		$tipi = array();
+		foreach ($cat as $c) {
+			/* @var $c Categoria */
+			if ($c->inCategoria($atleta, $data, $cintura))
+				$tipi[$c->getTipo()] = true;
+		}
+		return $tipi;
+	}
+	
+	/**
+	 * @access public
+	 * @return int[]
+	 */
+	public function getZone() {
+		return $this->getLista("zone");
+	}
+
+	/**
+	 * @access public
+	 * @param int[] $zone
+	 */
+	public function setZone($zone) {
+		$this->setLista("zone", $zone);
+	}
+
+	/**
+	 * @access public
+	 * @return Data
+	 */
+	public function getChiusura() {
+		return $this->getData("chiusura");
+	}
+
+	/**
+	 * @access public
+	 * @param Data $chiusura
+	 */
+	public function setChiusura($chiusura) {
+		$this->setData("chiusura", $chiusura);
+	}
+
+	/**
+	 * Indica se le iscrizioni per la gara sono chiuse
+	 * @access public
+	 * @return boolean
+	 */
+	public function iscrizioniChiuse() {
+		return $this->getChiusura()->passata();
+	}
+	
+	/**
+	 * @return boolean
+	 */
+	public function passata() {
+		return $this->getDataGara()->passata();
+	}
+
+	/**
+	 * @access public
+	 * @return boolean
+	 */
+	public function isPubblica() {
+		return $this->getBool("pubblica");
+	}
+
+	/**
+	 * @access public
+	 * @param boolean $pubblica
+	 */
+	public function setPubblica($pubblica) {
+		$this->setBool("pubblica", $pubblica);
+	}
+	
+	/**
+	 * @return boolean
+	 */
+	public function usaPeso() {
+		return $this->getBool("peso");
+	}
+	
+	/**
+	 * @param boolean $valore
+	 */
+	public function setUsaPeso($valore) {
+		$this->setBool("peso", $valore);
+	}
+	
+	/**
+	 * Indica se la lista dei partecipanti � stata pubblicata
+	 * @return boolean
+	 */
+	public function listaPubblicata() {
+		return $this->getBool("mostrapart");
+	}
+	
+	/**
+	 * @param boolean $valore
+	 */
+	public function setListaPubblicata($valore) {
+		$this->setBool("mostrapart", $valore);
+	}
+	
+	public function haLocandina() {
+		return !is_null($this->get("locandina"));
+	}
+
+	/**
+	 * @access public
+	 * @return string
+	 */
+	public function getLocandina() {
+		if (is_null($this->get("locandina")))
+			return _LOCANDINA_DEFAULT_;
+		else
+			return _LOCANDINA_SUBDIR_.$this->getChiave().".".$this->get("locandina");
+	}
+
+	/**
+	 * @access public
+	 * @param string $locandina
+	 */
+	public function setLocandina($locandina) {
+		$this->set("locandina", $locandina);
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getMinCoach() {
+		return $this->get("mincoach");
+	}
+	
+	/**
+	 * @param int $valore
+	 */
+	public function setMinCoach($valore) {
+		$this->set("mincoach", $valore);
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getMaxCoach() {
+		return $this->get("maxcoach");
+	}
+	
+	/**
+	 * @param int $valore
+	 */
+	public function setMaxCoach($valore) {
+		$this->set("maxcoach", $valore);
+	}
+
+	/**
+	 * Indica se è obbligatorio inserire le foto dei coach
+	 * @return bool
+	 */
+	public function isFotoCoachObbligatoria() {
+		return $this->getBool("fotocoach");
+	}
+	
+	/**
+	 * @param bool $valore
+	 */
+	public function setFotoCoachObbligatoria($valore) {
+		$this->setBool("fotocoach", $valore);
+	}
+
+	/**
+	 * Indica se i coach devono pagare
+	 * @return bool
+	 */
+	public function getPagamentoCoach() {
+		return $this->getBool("coachpaga");
+	}
+	
+	/**
+	 * @param bool $valore
+	 */
+	public function setPagamentoCoach($valore) {
+		$this->setBool("coachpaga", $valore);
+	}
+	
+	/**
+	 * @access public
+	 * @return Allegato[]
+	 */
+	public function getAllegati() {
+		if (is_null($this->allegati))
+			$this->allegati = Allegato::listaAllegati($this->getChiave());
+		return $this->allegati;
+	}
+
+	/**
+	 * @access public
+	 * @param Allegato[] allegati
+	 */
+	public function setAllegati($allegati) {
+		//TODO non va, rifare
+		$this->setLista("allegati", $allegati);
+	}
+	
+	/**
+	 * @param int $ids id societa 
+	 * @return Coach[] coach o Coach[][] se idsocieta == NULL
+	 */
+	public function getCoach($ids=NULL) {
+		if (is_null($ids)) {
+			//tutti i coach
+			if (!$this->allcoach) $this->caricaCoach();
+			return $this->getLista("coach");
+		} else {
+			//coach di una societa
+			$coach = $this->getLista("coach");
+			if (!isset($coach[$ids])) {
+				//se ha gi� caricato tutto allora non ce ne sono
+				if ($this->allcoach) return array();
+				//carica i coach della societa
+				$this->caricaCoach($ids);
+				$coach = $this->getLista("coach");
+			}
+			return $coach[$ids];
+		}
+	}
+	
+	/**
+	 * @param Coach[] $coach
+	 * @param int $ids id societa 
+	 */
+	public function setCoachSocieta($coach, $ids) {
+		$this->coachmod[$ids] = true;
+		$cl = $this->getLista("coach");
+		$cl[$ids] = $coach;
+		$this->setLista("coach", $cl);
+	}
+	
+	/**
+	 * @return float
+	 */
+	public function getPrezzoIndividuale() {
+		return $this->get('prezzo_indiv')/100;
+	}
+	
+	/**
+	 * @param float $val
+	 */
+	public function setPrezzoIndividuale($val) {
+		return $this->set('prezzo_indiv',$val*100);
+	}
+	
+	/**
+	 * @return float
+	 */
+	public function getPrezzoSquadra() {
+		return $this->get('prezzo_squadre')/100;
+	}
+	
+	/**
+	 * @param float $val
+	 */
+	public function setPrezzoSquadra($val) {
+		return $this->set('prezzo_squadre',$val*100);
+	}
+	
+	/**
+	 * @return float
+	 */
+	public function getPrezzoCoach() {
+		return $this->get('prezzo_coach')/100;
+	}
+	
+	/**
+	 * @param float $val
+	 */
+	public function setPrezzoCoach($val) {
+		return $this->set('prezzo_coach',$val*100);
+	}
+	
+	/**
+	 * 
+	 * @return float
+	 */
+	public function getRimborsoArb() {
+		return $this->get('rimborso_arbitro')/100;
+	}
+	
+	/**
+	 * @param float $val
+	 */
+	public function setRimborsoArb($val) {
+		return $this->set('rimborso_arbitro',$val*100);
+	}
+	
+	//TODO implementare per le altre liste
+	protected function caricaListaResult($nome) {
+		$id = $this->getChiave();
+// 		switch ($nome) {
+// 			case "allegati":
+// 				return $this->_connessione->select("allegati","idgara = '$id'");
+// 		}
+		return NULL;
+	}
+	
+	private function caricaCategorie() {
+		$this->categ = Categoria::listaGara($this->getChiave());
+	}
+	
+	/**
+	 * @param int $idsocieta
+	 */
+	private function caricaCoach($idsocieta = NULL) {
+		$c = Coach::lista($this->getChiave(), $idsocieta);
+		if (is_null($idsocieta)) {
+			//ha caricato tutto
+			$this->allcoach = true;
+			$coach = $c;
+		} else {
+			$coach = $this->getLista("coach");
+			$coach[$idsocieta] = $c;
+		}
+		$this->setLista("coach", $coach);
+	}	
+	
+	protected function insertLista($nome, $valori) {
+		switch ($nome) {
+			case "catind":
+				$this->insertListaCat($valori, 1);
+				break;
+			case "catsq":
+				$this->insertListaCat($valori, 0);
+				break;
+			case "coach":
+				$this->insertListaCoach($valori);
+				break;
+		}
+		parent::insertLista($nome, $valori);
+	}
+	
+	private function insertListaCat($valori, $indiv) {
+		if (count($valori)==0) return;
+		$id = $this->getChiave();
+		$ins = "";
+		foreach ($valori as $v) {
+			$num = "NULL";
+			if (isset($this->categ[$indiv][$v])) {
+				/* @var $c Categoria */
+				$c = $this->categ[$indiv][$v];
+				if ($c->getNumero() !== NULL)
+					$num = "'".$c->getNumero()."'";
+			} 
+				
+			$ins .= ",('$id','$v','$indiv',$num)";
+		}
+		$ins = substr($ins,1);
+		$this->_connessione->conn()->query(
+				"INSERT INTO categoriegara(idgara, idcategoria, individuale, numero) VALUES $ins;");
+	}
+	
+	private function insertListaCoach($valori) {
+		if (count($valori)==0) return;
+		$idg = $this->getChiave();
+		$ins = "";
+		$count = 0;
+		foreach ($valori as $ids => $lc) {
+			if ($this->coachmod[$ids]) {
+				foreach ($lc as $v) {
+					/* @var $v Coach */
+					$idp = $v->getPersona();
+					$tipo = $v->getTipo();
+					$ins .= ",('$idg','$idp','$tipo','$ids')";
+					$count++;
+				}
+			}
+		}
+		if ($count == 0) return;
+		$ins = substr($ins,1);
+		$this->_connessione->conn()->query(
+				"INSERT INTO coach(idgara, idpersona, tecnico, idsocieta) VALUES $ins;");
+	}
+	
+	protected function updateLista($nome, $valori) {
+		switch ($nome) {
+			case "catind":
+				$this->updateListaCat($valori, 1);
+				break;
+			case "catsq":
+				$this->updateListaCat($valori, 0);
+				break;
+			case "coach":
+				$this->updateListaCoach($valori);
+				break;
+		}
+		parent::updateLista($nome, $valori);
+	}
+	
+	private function updateListaCat($valori, $indiv) {
+		//TODO fare furbo
+		$id = $this->getChiave();
+		$this->_connessione->query("DELETE FROM categoriegara WHERE idgara='$id' AND individuale='$indiv'");
+		$this->insertListaCat($valori, $indiv);
+	}
+	
+	private function updateListaCoach($valori) {
+		if (count($valori)==0) return;
+		//TODO fare furbo
+		$idg = $this->getChiave();
+		$idmod = array();
+		foreach ($this->coachmod as $ids=>$mod) {
+			if ($mod) $idmod[] = $ids;
+		}
+		if (count($idmod)==0) return;
+		$listadel = $this->_connessione->flatArray($idmod);
+		$this->_connessione->query("DELETE FROM categoriegara WHERE idgara='$idg' AND idsocieta IN $listadel");
+		$this->insertListaCoach($valori);
+	}
+	
+}
+?>

@@ -1,0 +1,177 @@
+<?php
+
+function stampaTotali($stampa=true) {
+	/* @var $ctrl Riepilogo */
+	global $ctrl;
+	global $lang;
+	echo '<br><div class="totali';
+	if (!$stampa)
+		echo ' nostampa';
+	echo "\">";
+	
+	$tot_iscr = $ctrl->getNumIscritti() * $ctrl->getPrezzoIndividuale();
+	if($ctrl->getPagamentoCoach())
+		$tot_coach = $ctrl->getNumCoach() * $ctrl->getGara()->getPrezzoCoach();
+	else 
+		$tot_coach = 0;
+	if($ctrl->getNumArb() > 0)
+		$tot_arb = $ctrl->getNumTur() *- $ctrl->getRimborsoArb();
+	else 
+		$tot_arb = 0;
+	
+	echo "<table>";
+	
+	echo "<tr><td align='right'>$lang[num_atleti_soc]:</td><td width=35px align='center'> " . $ctrl->getNumAtleti()."</td><td align='center'>-</td></tr>";
+	echo "<tr><td align='right'>$lang[num_individuali_soc]: </td><td align='center'>" . $ctrl->getNumIscritti()."</td><td align='center'>$tot_iscr &#8364</td></tr>";
+	if ($ctrl->getPagamentoCoach())
+		echo "<tr><td align='right'>$lang[num_coach]: </td><td align='center'>" . $ctrl->getNumCoach()."</td><td align='center'>$tot_coach &#8364</td></tr>";
+	if($ctrl->getNumArb() > 0)
+		echo "<tr><td align='right'>$lang[num_arb_tur]: </td><td align='center'>" . $ctrl->getNumTur()."</td><td align='center'>$tot_arb &#8364</td></tr>";
+	echo "<tr><th align='right'>$lang[prezzo]: </th><th  align='center' colspan=2>" . $ctrl->getPrezzoTotale();
+	echo " &#8364;";
+	echo "</th></tr>";
+	echo "</table>";
+	echo "</div><br>";
+	
+}
+
+session_start();
+
+require_once("../config.inc.php");
+include_controller("soc/riepilogo");
+include_view("coach", "Header", "Template","arbitro");
+
+$lang = Lingua::getParole();
+
+$ctrl = new Riepilogo();
+$coachView = new CoachView($ctrl);
+$arbitroView = new ArbitroView($ctrl);
+$head = Header::titolo($lang["riepilogo_titolo"], $ctrl->getGara()->getNome());
+$head->setIndietro("soc",$lang["lista_gare"]);
+$head->setStampa(true);
+$templ = new Template($head);
+$templ->includeJs("popup");
+
+if ($ctrl->usaPeso()) {
+	$col_peso = $lang["peso_iscrizioni"];
+} else {
+	$col_peso = $lang["altezza_iscrizioni"];
+}
+
+$modifica = !$ctrl->getGara()->iscrizioniChiuse();
+
+$templ->stampaTagHead(false);
+?>
+<script type="text/javascript">
+function mostraCatOriginale(nome) {
+	showPopup("<?php echo $lang["categoria_originale"]; ?>:<br>"+nome);
+}
+</script>
+</head>
+
+<?php 
+$templ->apriBody();
+
+if ($modifica) {
+	echo "<div class=\"pulsante tr\" style=\"text-align:center\">";
+	echo "<a href=\""._PATH_ROOT_."soc/iscrivi.php?id=".$ctrl->getGara()->getChiave()."\" class='pulsante_noInput'>$lang[modifica_iscrizioni]</a>";
+	echo "<br></div><br><br>";
+}
+
+stampaTotali(false);
+?>
+<div class="Gare_soc_right"><h1><?php echo $lang["istr_pag"]; ?></h1></div>
+<?php echo $ctrl->getIstruzioniPagamento(); ?>
+<br><br>
+
+<?php if(!_WKC_MODE_) { ?>
+<div class="Gare_soc_right"><h1><?php echo $lang["arbitri"]; ?></h1></div>
+<?php $arbitroView->stampaRiepilogo(); ?>
+<br><br>
+<?php } ?>
+
+<div class="Gare_soc_right"><h1><?php echo $lang["coach"]; ?></h1></div>
+<?php $coachView->stampaRiepilogo(); ?>
+<br><br>
+
+<?php 
+if (!$ctrl->getGara()->listaPubblicata()) { 
+	echo "<h2 style=\"color:red;text-decoration:underline;\">$lang[msg_non_accorpate]</h2>\n";
+} 
+?>
+<div class="Gare_soc_right"><h1><?php echo $lang["atleti"]; ?></h1></div>
+<table width="100%" class="atleti" id="atleti" >
+<tr  class="tr">
+
+<th><div class='thAtleti'></div></th>
+<th><div class='thAtleti'><?php echo $lang["cognome_iscrizioni"].'/'.$lang["nome_iscrizioni"]; ?></div></th>
+<th><div class="thAtleti" ><?php echo $lang["sesso_iscrizioni"]; ?></div></th>
+<th><div class='thAtleti'><?php echo $lang["nascita_iscrizioni"]; ?></div></th>
+<th><div class='thAtleti'><?php echo $lang["cintura_iscrizioni"]; ?></div></th>
+
+<th><div class="thAtleti"><?php echo $lang["tipo_iscrizioni"]; ?></div></th>
+<th><div class='thAtleti'><?php echo $lang["stile_iscrizioni"]; ?></div></th>
+<th><div class='thAtleti '><?php echo $col_peso; ?></div></th>
+<th colspan="2"><div class='thAtleti'><?php echo $lang["categoria"]; ?></div></th>
+
+
+</tr>
+
+
+
+<?php
+$c=0;
+$poolstr = $lang["pool"];
+foreach ($ctrl->getAtleti() as $a) {
+	/* @var $a Atleta */
+	foreach ($ctrl->getIscrizioni($a->getChiave()) as $i) {
+		/* @var $i IscrittoIndividuale */
+		if (($c % 2) == 0) $classe = "riga1";
+		else $classe = "riga2";
+		
+		?>
+	<tr class="<?php echo $classe; ?>">
+	<td class="riepilogo_center"><?php echo ($c+1); ?></td>
+	<td class="riepilogo_center"><?php echo $a->getCognome()." ".$a->getNome(); ?></td>
+	<td class='riepilogo_center'><?php echo $ctrl->getNomeSesso($a); ?></td>
+	<td class='riepilogo_center'><?php echo $a->getDataNascita()->format("d/m/Y"); ?></td>
+	<td class='riepilogo_center'><?php echo $ctrl->getNomeCintura($i); ?></td>
+	<td class='riepilogo_center'><?php echo $ctrl->getNomeTipoGara($i); ?></td>
+	<td class='riepilogo_center'><?php echo $ctrl->getStile($i); ?></td>
+	<td class='riepilogo_center'><?php echo $ctrl->getPeso($i); ?></td>
+	<td class='riepilogo_center'>
+<?php 
+		$pubbl = $ctrl->getGara()->listaPubblicata();
+		if($ctrl->getGara()->getChiave() == 88)//TODO CAMPIONATO ITALIANO 2015, RIMUOVERE
+			echo "Categoria in \"Dettagli gara\"";
+		else
+		if ($pubbl) {
+			echo $ctrl->getNomeCategoria($i->getCategoriaFinale());
+			if ($i->isSeparato())
+				echo " - " . str_replace("<NUM>",$i->getPool(), $poolstr);
+		} else {
+			echo $ctrl->getNomeCategoria($i->getCategoria());
+		}
+?></td>
+	<td class='riepilogo_center'><?php
+		if ($pubbl) {
+			if ($i->isAccorpato()) {
+				$nomeorig = $ctrl->getNomeCategoria($i->getCategoria());
+				echo '<img style="cursor:pointer;" src="';
+				echo _PATH_ROOT_."img/spostato.png\" title=\"$nomeorig\" onclick=\"javascript:mostraCatOriginale('$nomeorig')\">";
+			} else if ($i->isSeparato()) {
+				echo '<img src="'._PATH_ROOT_.'img/separa.png" >';
+			}
+		}
+?></td>
+		
+	</tr>	
+<?php	
+		$c++;	
+	}
+}
+
+echo '</table>';
+stampaTotali();
+$templ->chiudiBody();
+?>

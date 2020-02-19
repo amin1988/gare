@@ -1,0 +1,24 @@
+<?php
+if (!defined("_BASEDIR_")) exit();
+include_class("Connessione");
+
+//database interno
+$ci = new Connessione();
+$ci->host = "62.149.150.77";
+$ci->user = "Sql198280";
+$ci->psw = "65a9d7ea";
+$ci->dbname = "Sql198280_5";
+$ci->port = ini_get("mysqli.default_port");
+
+//database esterno
+$ce = new Connessione();
+$ce->host = "62.149.150.77";
+$ce->user = "Sql198280";
+$ce->psw = "65a9d7ea";
+$ce->dbname = "Sql198280_3";
+$ce->port = ini_get("mysqli.default_port");
+
+//connessione al db interno
+$GLOBALS["connint"] = $ci;
+//connessione al db esterno
+$GLOBALS["connest"] = $ce;

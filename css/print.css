@@ -1,0 +1,28 @@
+@CHARSET "ISO-8859-1";
+
+body {
+	font-family: sans-serif;
+}
+
+#form_login {
+	width: 98%;
+	left: 0;
+}
+
+.nostampa,#segnalazione,.pulsante,#breadcrumb,.flags,#popup,.schede-pagina
+	{
+	display: none !important;
+}
+
+#head h1,#head h2 {
+	font-size: 250%;
+}
+
+td.riepilogo_center {
+	border-right: solid 1px #ccc;
+}
+
+.home {
+	border: none;
+	margin: 8px 0px;
+}

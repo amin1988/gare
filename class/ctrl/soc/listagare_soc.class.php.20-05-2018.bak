@@ -1,0 +1,63 @@
+<?php
+if (!defined("_BASEDIR_")) exit();
+include_controller("listagare");
+include_model("UtSocieta");
+
+class ListaGareSoc extends ListaGare {
+	private $partecipate = NULL;
+	
+	private $tipiiscr;
+	
+	protected function creaUtente($tipout=NULL) {
+		return UtSocieta::crea();		
+	}
+	
+	public function getUtSocieta() {
+		return $this->creaUtente();
+	}
+	
+	/**
+	 * @access public
+	 * @return Gara[]
+	 * @ReturnType Gara[]
+	 */
+	public function getGarePartecipate() {
+		if (is_null($this->partecipate))
+			$this->partecipate = $this->ut->getSocieta()->getGare($this->tipiiscr);
+		return $this->partecipate;
+	}
+	
+	public function getTipiPartecipazione($idg) {
+		if (isset($this->tipiiscr[$idg]))
+			return $this->tipiiscr[$idg];
+	}
+	
+	public function getGareAttive() {
+		return array_diff_key(parent::getGareAttive(), $this->getGarePartecipate());
+	}
+	
+	public function getGareChiuse() {
+		return array_diff_key(parent::getGareChiuse(), $this->getGarePartecipate());
+	}
+	
+	protected function getZone() {
+		return array_keys($this->ut->getZoneEstese());
+	}
+	
+	/**
+	 * @param Gara $gara
+	 * @return string la dimensione da limitare
+	 */
+	public function getLocandinaSize($gara) {
+		$file = _BASEDIR_.$gara->getLocandina();
+		$size = getimagesize($file);
+		$w = $size[0];
+		$h = $size[1];
+		if ($h > $w)
+			return "height";
+		else
+			return "width";
+	}
+	
+}
+?>

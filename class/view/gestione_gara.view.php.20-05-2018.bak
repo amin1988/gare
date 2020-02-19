@@ -1,0 +1,272 @@
+<?php
+if (!defined("_BASEDIR_")) exit();
+
+class GestioneGaraView {
+	/**
+	 * @var GestioneGara
+	 */
+	private $ctrl;
+	/**
+	 * @var VerificaGara
+	 */
+	private $err;
+	
+	public function __construct($ctrl) {
+		$this->ctrl = $ctrl;
+		$this->err = $ctrl->getErrori();
+	}
+	
+	public function stampaJavascript() {
+		?>
+<script type="text/javascript">
+function showDoc(id,campo) {
+	var c = document.getElementById(campo+'_'+id);
+	var nf = document.getElementById('nome'+campo+'_'+id);
+	if (nf) nf.disabled = !c.checked;
+	var ff = document.getElementById(campo+'file_'+id);
+	if (ff)	ff.disabled = !c.checked;
+}
+function enable(check, el) {
+	var c = document.getElementById(check);
+	var f = document.getElementById(el);
+	if (f) {
+		f.disabled = !c.checked;
+		if (c.checked)
+			f.style.display='inline';
+		else
+			f.style.display='none';
+	}
+}
+</script>	
+<!-- TinyMCE -->
+<script type="text/javascript" src="../tiny_mce/tiny_mce.js"></script>
+<script type="text/javascript">
+tinyMCE.init({
+    // General options
+    language: "<?php echo Lingua::getLinguaDefault(); ?>",
+    mode : "textareas",
+    theme : "advanced",
+    plugins : "autolink,lists,style,table,,inlinepopups,preview,searchreplace,paste,visualchars",
+    
+    // Theme options
+    theme_advanced_buttons1 : "cut,copy,paste,pastetext,pasteword,|,bold,italic,underline,strikethrough,|,justifyleft,justifycenter,justifyright,justifyfull,|,undo,redo,|,link,unlink,|,fontselect,fontsizeselect,|,forecolor,backcolor",
+    theme_advanced_buttons2 : "bullist,numlist,|,outdent,indent,|,tablecontrols,|,hr,removeformat,visualaid,|,charmap,|,search,replace,|,preview",
+    theme_advanced_buttons3 : "",
+    theme_advanced_buttons4 : "",
+    theme_advanced_toolbar_location : "top",
+    theme_advanced_toolbar_align : "left",
+    theme_advanced_statusbar_location : "",
+    width: "100%",
+    height: "400"
+});
+</script>
+<style>
+#descrizione div {
+	padding: 0px;
+}
+</style>
+<!-- /TinyMCE -->	
+<?php 
+	}
+	
+	public function stampaNome() {
+		echo '<input type="text" name="nome" id="nome" value="'.$this->ctrl->getNome();
+		echo '" required="required" class="inputGestGara';
+		if ($this->err->isErrato("nome")) echo ' err';
+		echo '" size="50" />';
+	}
+	
+	public function stampaPubblica() {
+		echo '<input type="radio" name="pubblica"';
+		if ($this->ctrl->isPubblica())
+			echo ' checked="checked"';
+		echo ' value="1" />';
+		echo Lingua::getParola("gara_pubblica");
+	}
+	
+	public function stampaPrivata() {
+		echo '<input type="radio" name="pubblica"';
+		if (!$this->ctrl->isPubblica())
+			echo ' checked="checked"';
+		echo ' value="0" />';
+		echo Lingua::getParola("gara_privata");
+	}
+	
+	public function stampaPeso() {
+		echo '<input type="radio" name="peso"';
+		if ($this->ctrl->usaPeso())
+			echo ' checked="checked"';
+		echo ' value="1" />';
+		echo Lingua::getParola("peso_iscrizioni");
+	}
+	
+	public function stampaAltezza() {
+		echo '<input type="radio" name="peso"';
+		if (!$this->ctrl->usaPeso())
+			echo ' checked="checked"';
+		echo ' value="0" />';
+		echo Lingua::getParola("altezza_iscrizioni");
+	}
+	
+	private function stampaCampoData($nome, $val, $style="", $pattern=true, $disabled=false) {
+		echo "<input type=\"text\" name=\"$nome\" id=\"$nome\" value=\"$val\" style=\"$style\" ";
+		if ($this->err->isErrato($nome)) echo 'class="inputGestGara err" ';
+		else echo 'class="inputGestGara" ';
+		if ($pattern) echo 'pattern="\d{1,2}/\d{1,2}/\d{4}" ';
+		if ($disabled) echo 'disabled="disabled" ';
+		echo 'placeholder="'.Lingua::getParola("formato_data");
+		echo '" title="'.Lingua::getParola("formato_data").'" required="required" />';
+	}
+	
+	public function stampaData() {
+		$this->stampaCampoData("data",$this->ctrl->getDataGara());
+	}
+	
+	public function stampaFineGara() {
+		$sel = $this->ctrl->haDataFineGara();
+		echo "<input type=\"checkbox\" name=\"chkfine\" id=\"chkfine\" value=\"1\" ";
+		if ($sel) echo 'checked="checked" ';
+		echo " onchange=\"enable('chkfine','datafine')\" />\n";
+		if ($sel)
+			$style = "";
+		else
+			$style = "display:none"; 
+		$this->stampaCampoData("datafine",$this->ctrl->getDataFineGara(), $style, false, !$sel);
+	}
+	
+	public function stampaChiusura() {
+		$this->stampaCampoData("chiusura",$this->ctrl->getChiusura());
+	}
+	
+	public function stampaNumCoach() {
+		echo Lingua::getParola("intervallo_inizio");
+		$this->txtCoach("mincoach", $this->ctrl->getMinCoach());
+		echo Lingua::getParola("intervallo_fine");
+		$this->txtCoach("maxcoach", $this->ctrl->getMaxCoach());
+	}
+
+	public function stampaFotoCoach($disabled=false) {
+		$val = $this->ctrl->getFotoCoach();
+		if ($disabled) {
+			if ($val)
+				echo Lingua::getParola("foto_coach");
+			else
+				echo '<span style="color:gray;">'.Lingua::getParola("foto_coach_no").'</span>';
+		} else {
+			$this->stampaCheckLabel("fotocoach", "foto_coach", $val);
+		}
+	}
+
+	public function stampaPagamentoCoach() {
+		$this->stampaCheckLabel("coachpaga", "pagamento_coach", $this->ctrl->getPagamentoCoach());
+	}
+	
+	public function stampaPrezzoIndiv() {
+		$this->stampaPrezzo('prezzo_indiv',$this->ctrl->getPrezzoIndiv());
+	}
+	
+	public function stampaPrezzoSquadre() {
+		$this->stampaPrezzo('prezzo_sq',$this->ctrl->getPrezzoSquadre());
+	}
+	
+	public function stampaPrezzoCoach() {
+		$this->stampaPrezzo('prezzo_coach',$this->ctrl->getPrezzoCoach());
+	}
+	
+	public function stampaRimborosoArbitro() {
+		$this->stampaPrezzo('rimborso_arbitro',$this->ctrl->getRimborsoArb());
+	}
+	
+	private function stampaPrezzo($nome, $val) {
+		echo " <input type=\"text\" name=\"$nome\" value=\"$val\" ";
+		echo 'class="inputGestGara" style="margin-left:5px;margin-right:5px;text-align:right;" ';
+		echo 'required="required" pattern="\s*\d+(\s*[.,]\s*\d+)?\s*" size="5"> &euro;';
+	}
+	
+	private function stampaCheckLabel($nome, $label, $checked) {
+		echo "<input type=\"checkbox\" name=\"$nome\" id=\"$nome\" value=\"1\" ";
+		if ($checked) echo 'checked="checked" ';
+		echo "  />".Lingua::getParola($label)."\n";
+	}
+	
+	private function txtCoach($nome, $val) {
+		echo " <input type=\"text\" name=\"$nome\" value=\"$val\" ";
+		echo 'class="inputGestGara" style="margin-left:5px;margin-right:5px" ';
+		echo 'required="required" pattern="\d+" maxlength="2" size="2"> ';
+	}
+	
+	public function stampaDescrizione() {
+		echo '<textarea name="descrizione" cols="100%" rows="10" class="inputGestGara">';
+		echo $this->ctrl->getDescrizione().'</textarea>';
+	}
+	
+	public function stampaLocandina() {
+		$sel = $this->ctrl->locandinaSelezionata();
+		echo "<input type=\"checkbox\" name=\"chkloc\" id=\"chkloc\" value=\"1\" onchange=\"enable('chkloc','locandina');\" ";
+		if ($sel) echo 'checked="checked" ';
+		echo " onchange=\"enable('chkloc','locandina')\" />\n";
+
+		echo '<input type="file" name="locandina" id="locandina" ';
+		if (!$sel) echo 'style="display:none" disabled="disabled" ';
+		echo 'required="required" accept="image/*" class="inputGestGara"/>';
+		
+	}
+	
+	/**
+	 * @param GruppoCat $g
+	 */
+	public function stampaGruppoCategoria($g) {
+		$k = $g->getChiave();
+		$cont = "<img id=\"mostra_cat$k\" class=\"mostra\" onclick=\"apriCat($k)\" src=\""._PATH_ROOT_."img/down.png\"> " . $g->getNome();
+		$this->stampaRigaCheck("gruppo[$k]", $k, $cont, $this->ctrl->isGruppoSelezionato($k));
+		echo "<div id=\"catlist$k\" class=\"dettaglioG\" style=\"display:none;margin:0px 50px;\"></div>";
+	}
+	
+	public function stampaRigaCheck($nome, $valore, $testo, $checked) {
+		echo '<div style="position:relative;width:90%;height:30px;display:block;left:50px;">';
+		echo '<div class="inputGestGara" style="width:40px;height:100%;text-align:center;float:left;line-height:40px">';
+		echo "<input type=\"checkbox\" name=\"$nome\" value=\"$valore\" ";
+		if ($checked) echo 'checked="checked" ';
+		echo 'style="position:relative;top:5px">';
+		echo '</div><div class="inputGestGara" style="margin-left:5px;height:100%;float:left;width:80%;line-height:30px">';
+		echo $testo;
+		echo '</div></div><br>';
+		//echo "<div style='clear:both;'></div>";
+	}
+	
+	public function stampaZone() {
+		echo '<fieldset class="inputGestGara">';
+		echo "\n<legend>".Lingua::getParola("zone_gara").":</legend>\n";
+		foreach ($this->ctrl->getZone() as $k=>$z) {
+			$this->stampaRigaCheck("zona[$k]", $k, $z->getNome(), $this->ctrl->isZonaSelezionata($k));
+		}
+		echo '</fieldset>';
+	}
+	
+	public function stampaDocNoFile($i, $nome, $sel, $old=true) {
+		if ($old) $campo="olddoc"; else $campo="doc";
+		echo "<div class=\"inputGestGara\" style='width:40px;height:30px;text-align:center;float:left;line-height:40px'>";
+	
+		echo "<input type=\"checkbox\" name=\"{$campo}[$i]\" id=\"{$campo}_$i\" value=\"$i\" onchange=\"showDoc($i,'$campo');\" ";
+		if ($sel) echo 'checked="checked" ';
+		echo ' style="position:relative;top:5px" />';
+	
+		echo "</div>";
+		echo "<input type=\"text\" name=\"nome{$campo}[$i]\" id=\"nome{$campo}_$i\" ";
+		if (!$sel) echo 'disabled="disabled"';
+		echo "value=\"$nome\" required=\"required\" class=\"inputGestGara";
+		if ($this->err->isErrato("nome{$campo}_$i")) echo ' err';
+		echo "\"/>\n";
+	}
+	
+	public function stampaDoc($i) {
+		$sel = $this->ctrl->isDocSelezionato($i);
+		echo "<div>";
+		$this->stampaDocNoFile($i, $this->ctrl->getNomeDoc($i), $sel, false);
+		echo "<input type=\"file\" name=\"docfile_$i\" id=\"docfile_$i\" ";
+		if (!$sel) echo 'disabled="disabled" ';
+		echo 'required="required"  class="inputGestGara"/></div>';
+		echo "\n<div style='clear:both'></div>";
+	}
+	
+}

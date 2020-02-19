@@ -1,0 +1,31 @@
+.logocat {
+	width:16px;
+	height:20px;
+	background-position: center center;
+	background-repeat: no-repeat;
+}
+.status1 .logocat, .logost1 {
+	background-image: url('../img/sposta.png');
+	cursor: pointer;
+}
+.status2 .logocat, .logost2 {
+	background-image: url('../img/accorpate.png');
+	cursor: pointer;
+}
+.status3 .logocat, .logost3 {
+	background-image: url('../img/separa.png');
+	cursor: pointer;
+}
+
+.annulla, .accorpa, .separa {
+	display:none;
+}
+.status1 .annulla, .status3 .annulla, .status4 .annulla {
+	display:inline;
+}
+.status0 .accorpa, .status0 .separa {
+	display:inline;
+}
+/*.status1 .nomecat {
+	text-decoration:line-through;
+}*/

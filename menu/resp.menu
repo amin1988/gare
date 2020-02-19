@@ -1,0 +1,8 @@
+lista_gare,index
+-accorpa_titolo,accorpa
+-riepilogo,*
+-*scarica_iscrizioni,download_iscrizioni
+-*riepilogo_societa,riepilogo_soc
+-*riepilogo_individuali,riepilogo,0 %individuali
+-*riepilogo_squadre,riepilogosq,1 %squadre
+-*statistiche_titolo,stat
